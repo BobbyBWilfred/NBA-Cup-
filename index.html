@@ -67,18 +67,31 @@ select{font:inherit;color:var(--ink);background:var(--card);border:1px solid var
 .mv{display:flex;gap:4px;align-items:center;white-space:nowrap}
 .kp{display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));gap:10px}.kp b{font:700 26px "Barlow Condensed",sans-serif}
 .rt th,.rt td{padding:4px 8px;white-space:nowrap}
+body{background:radial-gradient(1000px 420px at 8% -8%,color-mix(in srgb,var(--acc) 16%,transparent),transparent),var(--bg)}
+.card{box-shadow:0 1px 2px rgba(15,27,45,.06),0 10px 26px -14px rgba(15,27,45,.25)}
+.tc{transition:transform .15s}.tc:hover{transform:translateY(-2px)}
+.pr[data-act]{cursor:pointer}.pr[data-act]:hover,.lk:hover{color:var(--acc)}.lk{cursor:pointer}
+.hero{background:linear-gradient(135deg,color-mix(in srgb,var(--acc) 18%,var(--card)),var(--card))}
+.pill{display:inline-block;padding:2px 10px;border-radius:99px;background:var(--acc);color:#fff;font-size:12px;font-weight:600}
+.sk{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px}.sk div{font-size:12px;color:var(--mute)}.sk b{color:var(--ink)}.sk i{display:block;height:6px;border-radius:9px;background:var(--line);margin-top:3px;overflow:hidden}.sk u{display:block;height:100%;background:var(--acc)}
+.rt td:nth-child(2),.rt th:nth-child(2){text-align:left}.tabs button[aria-selected=true]{color:var(--acc)}
+@media(max-width:700px){h1{font-size:34px}.wrap{padding-bottom:90px}.tabs{position:fixed;left:0;right:0;bottom:0;margin:0;z-index:20;background:var(--card);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}.tabs button{padding:12px 14px;font-size:14px}.m{width:220px}}
 </style></head>
-<body><div id="app"></div><input type="file" id="bbf" accept=".json,.gz,application/json,application/gzip,application/x-gzip" hidden>
+<body><div id="app"></div><input type="file" id="bbf" accept=".json,.gz,application/json,application/gzip,application/x-gzip" hidden><input type="file" id="rst" accept=".json" hidden>
 <script>
 const KEY='nbaCupTracker.v1';
 const T={ATL:["Hawks","#C8102E"],BOS:["Celtics","#007A33"],BKN:["Nets","#6B7280"],CHA:["Hornets","#00788C"],CHI:["Bulls","#CE1141"],CLE:["Cavaliers","#860038"],DET:["Pistons","#1D42BA"],IND:["Pacers","#FDBB30"],MIA:["Heat","#98002E"],MIL:["Bucks","#00471B"],NYK:["Knicks","#F58426"],ORL:["Magic","#0077C0"],PHI:["76ers","#006BB6"],TOR:["Raptors","#CE1141"],WAS:["Wizards","#E31837"],DAL:["Mavericks","#00538C"],DEN:["Nuggets","#FEC524"],GSW:["Warriors","#FFC72C"],HOU:["Rockets","#CE1141"],LAC:["Clippers","#C8102E"],LAL:["Lakers","#552583"],MEM:["Grizzlies","#5D76A9"],MIN:["Timberwolves","#236192"],NOP:["Pelicans","#C8102E"],OKC:["Thunder","#007AC1"],PHX:["Suns","#E56020"],POR:["Trail Blazers","#E03A3E"],SAC:["Kings","#5A2D81"],SAS:["Spurs","#8A8D8F"],UTA:["Jazz","#F9A01B"]};
 const EA=['ATL','BOS','BKN','CHA','CHI','CLE','DET','IND','MIA','MIL','NYK','ORL','PHI','TOR','WAS'],WE=Object.keys(T).filter(t=>!EA.includes(t));
 const GN=['East A','East B','East C','West A','West B','West C'];
 const ID={ATL:1610612737,BOS:1610612738,BKN:1610612751,CHA:1610612766,CHI:1610612741,CLE:1610612739,DET:1610612765,IND:1610612754,MIA:1610612748,MIL:1610612749,NYK:1610612752,ORL:1610612753,PHI:1610612755,TOR:1610612761,WAS:1610612764,DAL:1610612742,DEN:1610612743,GSW:1610612744,HOU:1610612745,LAC:1610612746,LAL:1610612747,MEM:1610612763,MIN:1610612750,NOP:1610612740,OKC:1610612760,PHX:1610612756,POR:1610612757,SAC:1610612758,SAS:1610612759,UTA:1610612762};
-const fresh=()=>({season:'2026-27',groups:null,games:{},ko:{},history:[],lg:null,mv:[]});
-let ok=true,S=Object.assign(fresh(),(()=>{try{return JSON.parse(localStorage.getItem(KEY))||{}}catch(x){return{}}})());
+const fresh=()=>({season:'2026-27',groups:null,games:{},ko:{},history:[],lg:null,mv:[],pl:{},cp:{}});
+let ok=true,S=fresh(),dbp=null,svt;
 let tab='teams',armed=null,tmr,msg='',imsg='';
-const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S));ok=true}catch(x){ok=false}};
+const idb=()=>new Promise((r,j)=>{const q=indexedDB.open('leagueHub',1);q.onupgradeneeded=()=>q.result.createObjectStore('kv');q.onsuccess=()=>r(q.result);q.onerror=()=>j(q.error)});
+const save=()=>{clearTimeout(svt);svt=setTimeout(async()=>{try{dbp=dbp||idb();const d=await dbp;await new Promise((r,j)=>{const t=d.transaction('kv','readwrite');t.objectStore('kv').put(S,'S');t.oncomplete=r;t.onerror=()=>j(t.error)});ok=true}catch(x){ok=false;render()}},150)};
+async function boot(){try{dbp=idb();const d=await dbp,v=await new Promise(r=>{const q=d.transaction('kv').objectStore('kv').get('S');q.onsuccess=()=>r(q.result);q.onerror=()=>r(null)});
+ if(v)S=Object.assign(fresh(),v);else{const o=JSON.parse(localStorage.getItem(KEY)||'null');if(o){S=Object.assign(fresh(),o);save()}}
+ if(navigator.storage&&navigator.storage.persist)navigator.storage.persist()}catch(x){ok=false}render()}
 const e=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const nextSeason=s=>{let m=/^(\d{4})-(\d{2})$/.exec(s);if(m){const y=+m[1]+1;return y+'-'+String((y+1)%100).padStart(2,'0')}m=/^\d{4}$/.exec(s);return m?String(+s+1):s+' (next)'};
 const num=v=>v===''||v==null||isNaN(v)?null:+v;
@@ -110,9 +123,9 @@ function bracketHTML(st,ro){const{m,s}=bracket(st);
 function render(){
  let h=`<div class="wrap"><div class="top"><div><h1>League Hub</h1><div class="note">Upload your BBGM export to follow every team, player and move, and run the NBA Cup.</div></div><div class="bar"><button data-act="import" class="p">Upload league file</button><label class="note">Season <input id="season" value="${e(S.season)}" size="8"></label>${btn('reset','Reset Cup')}${btn('wipe','Delete everything','d')}</div></div>`;
  if(!ok)h+=`<p class="note" style="color:var(--bad)">This browser is blocking storage, so nothing will be kept after you close the page. Use the backup box in History.</p>`;
- h+=`<div class="tabs" role="tablist">${[['teams','Teams'],['leaders','Leaders'],['moves','Moves ('+S.mv.reduce((t,m)=>t+m.items.length,0)+')'],['groups','Cup Groups'],['bracket','Bracket'],['history','History ('+S.history.length+')']].map(([k,l])=>`<button role="tab" data-act="tab:${k}" aria-selected="${tab===k}">${l}</button>`).join('')}</div>`;
+ h+=`<div class="tabs" role="tablist">${[['teams','Teams'],['leaders','Leaders'],['seasons','Seasons'],['moves','Moves ('+S.mv.reduce((t,m)=>t+m.items.length,0)+')'],['groups','Cup Groups'],['bracket','Bracket'],['history','History ('+S.history.length+')']].map(([k,l])=>`<button role="tab" data-act="tab:${k}" aria-selected="${tab===k}">${l}</button>`).join('')}</div>`;
  if(imsg)h+=`<div class="card" style="margin-bottom:12px">${e(imsg)} ${S.mv.length?'<button data-act="tab:moves">View movements</button>':''}</div>`;
- if(tab==='teams')h+=teamsHTML();if(tab==='leaders')h+=leadersHTML();if(tab==='moves')h+=movesHTML();
+ if(psel||msel)h+=psel?playerPage(psel):movePage(msel);else{if(tab==='teams')h+=teamsHTML();if(tab==='leaders')h+=leadersHTML();if(tab==='moves')h+=movesHTML();if(tab==='seasons')h+=seasonsHTML()}
  if(tab==='groups'){
   if(!S.groups)h+=`<div class="card empty"><h3>No groups yet for ${e(S.season)}</h3><p class="note">Draw three random groups of five in each conference, like the real Cup.</p>${btn('draw','Draw groups','p')}</div>`;
   else{const n=[0,1,2,3,4,5].reduce((t,i)=>t+stand(S,i).n,0);
@@ -124,16 +137,18 @@ function render(){
    h+=bracketHTML(S,false)}}
  if(tab==='history'){
   h+=S.history.length?S.history.map((x,i)=>`<div class="card" style="margin-bottom:12px"><details><summary>${e(x.season)}: ${tm(x.champ)} beat ${tm(x.run)}, ${x.score} <span class="note">(saved ${e(x.date)})</span></summary>${bracketHTML(x.snap,true)}<h2>Group stage</h2>${groupsHTML(x.snap,true)}</details>${btn('del:'+i,'Delete this entry','d')}</div>`).join(''):`<div class="card empty"><h3>No saved Cups yet</h3><p class="note">Finish a bracket and choose Next season.</p></div>`;
-  h+=`<div class="card"><h3>Backup</h3><p class="note">Data lives in this browser only. Copy the backup text somewhere safe, or paste a saved backup and load it. ${e(msg)}</p><textarea id="bk" aria-label="Backup text"></textarea><div class="bar" style="margin-top:8px"><button data-act="bshow">Show backup</button><button data-act="bload">Load backup</button></div></div>`}
+  h+=`<div class="card"><h3>Backup</h3><p class="note">Everything is stored in this browser's database, sized for 20+ seasons of players, moves and Cups. Clearing site data erases it, so download a backup now and then. ${e(msg)}</p><div class="bar"><button data-act="bdl" class="p">Download backup</button><button data-act="rst">Restore from backup file</button></div></div>`}
  $('#app').innerHTML=h+'</div>'}
 const $=s=>document.querySelector(s);
 function act(a){
  const need=a==='reset'||a==='wipe'||a.startsWith('del:')||(a==='draw'&&S.groups&&Object.values(S.games).some(g=>g.some(v=>v!=='')));
  if(need&&armed!==a){armed=a;clearTimeout(tmr);tmr=setTimeout(()=>{armed=null;render()},3500);render();return}
  armed=null;msg='';
- if(a.startsWith('tab:')){tab=a.slice(4);tsel=null;imsg=''}
- else if(a.startsWith('team:')){tsel=a.slice(5);tab='teams';imsg=''}
- else if(a==='back')tsel=null;
+ if(a.startsWith('tab:')){tab=a.slice(4);tsel=null;imsg='';psel=msel=null;hist=[]}
+ else if(a.startsWith('team:')){tsel=a.slice(5);tab='teams';imsg='';psel=msel=null;hist=[]}
+ else if(a.startsWith('pl:')){hist.push([psel,msel]);psel=+a.slice(3);msel=null}
+ else if(a.startsWith('mv:')){hist.push([psel,msel]);msel=a.slice(3);psel=null}
+ else if(a==='back'){if(hist.length)[psel,msel]=hist.pop();else tsel=null}
  else if(a.startsWith('sort:'))tsort=a.slice(5);
  else if(a.startsWith('conf:'))tconf=a.slice(5);
  else if(a.startsWith('mf:'))mvk=a.slice(3);
@@ -143,8 +158,7 @@ function act(a){
  else if(a==='archive'){const F=bracket(S).m.F;if(!F.win)return;S.history.unshift({id:Date.now(),season:S.season,date:new Date().toLocaleDateString(),champ:F.win,run:F.win===F.h?F.a:F.h,score:F.hs+'–'+F.as,snap:{groups:S.groups,games:S.games,ko:S.ko}});S.season=nextSeason(S.season);S.groups=null;S.games={};S.ko={};tab='groups'}
  else if(a.startsWith('del:'))S.history.splice(+a.slice(4),1);
  else if(a==='bload'){try{const j=JSON.parse($('#bk').value);if(!j||!Array.isArray(j.history))throw 0;S=Object.assign(fresh(),j);msg='Backup loaded.'}catch(x){msg='That text is not a valid backup.'}}
- save();render();
- if(a==='bshow'){$('#bk').value=JSON.stringify(S)}}
+ save();render();if(/^(pl|mv|tab|team):/.test(a)||a==='back')scrollTo(0,0)}
 async function readExport(f){
  const buf=await f.arrayBuffer(),u=new Uint8Array(buf);
  if(u[0]===0x1f&&u[1]===0x8b){
@@ -152,12 +166,12 @@ async function readExport(f){
   return await new Response(new Blob([buf]).stream().pipeThrough(new DecompressionStream('gzip'))).text()}
  return new TextDecoder().decode(buf)}
 const PH={'-2':'Expansion draft','-1':'Fantasy draft',0:'Preseason',1:'Regular season',2:'After trade deadline',3:'Playoffs',4:'Before draft',5:'Draft',6:'After draft',7:'Re-sign players',8:'Free agency'};
-let tsel=null,tsort='w',tconf='A',mvk='All',mtm='';
+let tsel=null,tsort='w',tconf='A',mvk='All',mtm='',psel=null,msel=null,hist=[];
 const f1=v=>v.toFixed(1),pg=(p,k)=>p.g?p[k]/p.g:0,sg=v=>(v>0?'+':'')+v.toFixed(1),abOf=t=>(S.lg.ab||{})[t]||'FA';
 const tb=t=>T[t]?`<span class="tm" style="--c:${T[t][1]}"><img src="https://cdn.nba.com/logos/nba/${ID[t]}/primary/L/logo.svg" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='inline-block'"><i></i><b>${t}</b></span>`:`<small class="note">${e(t)}</small>`;
 function tovr(P){let m=-124.13;P.map(p=>p.o).sort((a,b)=>b-a).slice(0,10).forEach((v,i)=>m+=0.4417*Math.exp(-0.1905*i)*v);return Math.round(m*50/20+50)}
 const needLg=w=>`<div class="card empty"><h3>No league data yet</h3><p class="note">Upload your BBGM export (.json or .json.gz) to see ${w}. Upload a fresh export any time and everything updates.</p><button data-act="import" class="p">Upload league file</button></div>`;
-const prow=p=>`<div class="pr"><span class="pos">${e(p.po)}</span><span class="pn">${e(p.n)}${p.inj?' <small class="note">INJ</small>':''}</span><span class="note">${p.o}/${p.p}</span><span class="ln">${f1(pg(p,'pts'))} ${f1(pg(p,'r'))} ${f1(pg(p,'as'))}</span></div>`;
+const prow=p=>`<div class="pr"><span class="pos">${e(p.po)}</span><span class="pn lk" data-act="pl:${p.i}">${e(p.n)}${p.inj?' <small class="note">INJ</small>':''}</span><span class="note">${p.o}/${p.p}</span><span class="ln">${f1(pg(p,'pts'))} ${f1(pg(p,'r'))} ${f1(pg(p,'as'))}</span></div>`;
 const chip=(pre,cur,arr)=>`<div class="chips">${arr.map(([k,l])=>`<button data-act="${pre}:${k}" class="${cur===k?'p':''}">${l}</button>`).join('')}</div>`;
 function teamsHTML(){const L=S.lg;if(!L)return needLg('every team, its top 5 players and full roster');if(tsel)return teamPage(tsel);
  const R=L.teams.map(t=>{const P=L.pl.filter(p=>p.t===t.t).sort((a,b)=>b.o-a.o);return{...t,P,v:tovr(P)}});
@@ -165,23 +179,48 @@ function teamsHTML(){const L=S.lg;if(!L)return needLg('every team, its top 5 pla
  return `<div class="note" style="margin-bottom:8px">${e(L.season)} · ${e(L.ph)} · uploaded ${e(L.date)}</div>`+chip('sort',tsort,[['w','Record'],['o','Team OVR'],['d','Point diff']])+chip('conf',tconf,[['A','All'],['0','East'],['1','West']])+'<div class="grid">'+R.filter(t=>tconf==='A'||String(t.c)===tconf).sort(f).map(t=>`<div class="card tc" data-act="team:${t.a}"><div class="th">${tm(t.a)}<span class="rec">${t.w}–${t.l}</span></div><div class="note" style="margin-bottom:6px">OVR ${t.v} · ${sg(t.pf-t.pa)} diff · ${f1(t.pf)} pts</div><div class="note">Top 5 · OVR/POT · PTS REB AST</div>${t.P.slice(0,5).map(prow).join('')}</div>`).join('')+'</div>'}
 function teamPage(a){const L=S.lg,t=L.teams.find(x=>x.a===a);if(!t)return'';const P=L.pl.filter(p=>p.t===t.t).sort((x,y)=>y.o-x.o),pay=P.reduce((s,p)=>s+(p.c?p.c[0]:0),0)/1000,pc=(m,x)=>x?(100*m/x).toFixed(1):'–';
  const k=[['Record',t.w+'–'+t.l],['Team OVR',tovr(P)],['Points',f1(t.pf)],['Opp pts',f1(t.pa)],['Diff',sg(t.pf-t.pa)],['Payroll','$'+pay.toFixed(1)+'M']];
- return `<button data-act="back">‹ All teams</button><div class="card" style="margin:12px 0"><h2 style="margin:0 0 10px">${tm(a)}</h2><div class="kp">${k.map(([l,v])=>`<div><div class="note">${l}</div><b>${v}</b></div>`).join('')}</div></div><h3>Top 5 players</h3><div class="card">${P.slice(0,5).map(prow).join('')}</div><h3 style="margin-top:18px">Full roster</h3><div class="card scroll"><table class="rt"><tr><th>Player</th><th>Pos</th><th>Age</th><th>OVR</th><th>POT</th><th>GP</th><th>MIN</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>FG%</th><th>3P%</th><th>$M · exp</th></tr>${P.map(p=>`<tr><td>${e(p.n)}</td><td>${e(p.po)}</td><td>${p.a}</td><td>${p.o}</td><td>${p.p}</td><td>${p.g}</td><td>${f1(pg(p,'mn'))}</td><td>${f1(pg(p,'pts'))}</td><td>${f1(pg(p,'r'))}</td><td>${f1(pg(p,'as'))}</td><td>${f1(pg(p,'st'))}</td><td>${f1(pg(p,'bl'))}</td><td>${pc(p.fg,p.fga)}</td><td>${pc(p.tp,p.tpa)}</td><td>${p.c?(p.c[0]/1000).toFixed(1)+' · '+p.c[1]:'–'}</td></tr>`).join('')}</table></div>`}
+ return `<button data-act="back">‹ All teams</button><div class="card" style="margin:12px 0"><h2 style="margin:0 0 10px">${tm(a)}</h2><div class="kp">${k.map(([l,v])=>`<div><div class="note">${l}</div><b>${v}</b></div>`).join('')}</div></div><h3>Top 5 players</h3><div class="card">${P.slice(0,5).map(prow).join('')}</div><h3 style="margin-top:18px">Full roster</h3><div class="card scroll"><table class="rt"><tr><th>Player</th><th>Pos</th><th>Age</th><th>OVR</th><th>POT</th><th>GP</th><th>MIN</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>FG%</th><th>3P%</th><th>$M · exp</th></tr>${P.map(p=>`<tr><td class="lk" data-act="pl:${p.i}">${e(p.n)}</td><td>${e(p.po)}</td><td>${p.a}</td><td>${p.o}</td><td>${p.p}</td><td>${p.g}</td><td>${f1(pg(p,'mn'))}</td><td>${f1(pg(p,'pts'))}</td><td>${f1(pg(p,'r'))}</td><td>${f1(pg(p,'as'))}</td><td>${f1(pg(p,'st'))}</td><td>${f1(pg(p,'bl'))}</td><td>${pc(p.fg,p.fga)}</td><td>${pc(p.tp,p.tpa)}</td><td>${p.c?(p.c[0]/1000).toFixed(1)+' · '+p.c[1]:'–'}</td></tr>`).join('')}</table></div>`}
 const LC=[['Points',p=>pg(p,'pts')],['Rebounds',p=>pg(p,'r')],['Assists',p=>pg(p,'as')],['Steals',p=>pg(p,'st')],['Blocks',p=>pg(p,'bl')],['3-pointers made',p=>pg(p,'tp')],['FG%',p=>100*p.fg/p.fga,p=>p.fga/p.g>=4],['3P%',p=>100*p.tp/p.tpa,p=>p.tpa/p.g>=2],['FT%',p=>100*p.ft/p.fta,p=>p.fta/p.g>=1.5],['Minutes',p=>pg(p,'mn')],['PER',p=>p.per],['Overall rating',p=>p.o,null,1]];
 function leadersHTML(){const L=S.lg;if(!L)return needLg('stat leaders');const min=Math.ceil(Math.max(1,...L.teams.map(t=>t.w+t.l))*.4);
- return `<div class="note" style="margin-bottom:8px">${e(L.season)} · ${e(L.ph)}. Per-game leaders need ${min}+ games; shooting % also needs a minimum of attempts per game. Tap a player to open their team.</div><div class="grid">`+LC.map(([n,v,q,all])=>{const R=L.pl.filter(p=>all||(p.g>=min&&(!q||q(p)))).map(p=>[p,v(p)]).filter(x=>isFinite(x[1])).sort((a,b)=>b[1]-a[1]).slice(0,10);
-  return `<div class="card"><h3>${n}</h3>${R.map(([p,x],i)=>`<div class="pr"${p.t>=0?` data-act="team:${abOf(p.t)}" style="cursor:pointer"`:''}><span class="rk">${i+1}</span><span class="pn">${e(p.n)}</span>${tb(abOf(p.t))}<b>${x.toFixed(all?0:1)}</b></div>`).join('')||'<p class="note">Not enough games yet.</p>'}</div>`}).join('')+'</div>'}
+ return `<div class="note" style="margin-bottom:8px">${e(L.season)} · ${e(L.ph)}. Per-game leaders need ${min}+ games; shooting % also needs a minimum of attempts per game. Tap a player to open their full history.</div><div class="grid">`+LC.map(([n,v,q,all])=>{const R=L.pl.filter(p=>all||(p.g>=min&&(!q||q(p)))).map(p=>[p,v(p)]).filter(x=>isFinite(x[1])).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  return `<div class="card"><h3>${n}</h3>${R.map(([p,x],i)=>`<div class="pr" data-act="pl:${p.i}"><span class="rk">${i+1}</span><span class="pn">${e(p.n)}</span>${tb(abOf(p.t))}<b>${x.toFixed(all?0:1)}</b></div>`).join('')||'<p class="note">Not enough games yet.</p>'}</div>`}).join('')+'</div>'}
 function movesHTML(){if(!S.mv.length)return `<div class="card empty"><h3>No player movement yet</h3><p class="note">${S.lg?'Movement appears when a new upload differs from the last one. Upload again at the trade deadline, or after pressing Next season.':'Upload a league file first. Every later upload is compared with the one before it.'}</p><button data-act="import" class="p">Upload league file</button></div>`;
  const tl=S.lg?S.lg.teams.map(t=>t.a).sort():[];
  const body=S.mv.map(m=>{const it=m.items.filter(x=>(mvk==='All'||x.k===mvk)&&(!mtm||x.f===mtm||x.t===mtm));if(!it.length)return'';
-  return `<div class="card" style="margin-bottom:12px"><h3>${e(m.season)} · ${e(m.ph)} <span class="note">${e(m.date)} · ${m.items.length} moves</span></h3>${it.map(x=>`<div class="pr"><span class="kd">${x.k}</span><span class="pn">${e(x.n)} <small class="note">${x.o??''}</small></span><span class="mv">${tb(x.f)} → ${tb(x.t)}</span></div>`).join('')}</div>`}).join('');
+  return `<div class="card" style="margin-bottom:12px"><h3>${e(m.season)} · ${e(m.ph)} <span class="note">${e(m.date)} · ${m.items.length} moves</span></h3>${it.map(x=>`<div class="pr" data-act="mv:${m.id}.${m.items.indexOf(x)}"><span class="kd">${x.k}</span><span class="pn">${e(x.n)} <small class="note">${x.o??''}</small></span><span class="mv">${tb(x.f)} → ${tb(x.t)}</span></div>`).join('')}</div>`}).join('');
  return chip('mf',mvk,['All','Trade','Signed','Released','Draft','Retired'].map(k=>[k,k]))+`<label class="note">Team <select id="mteam"><option value="">All teams</option>${tl.map(a=>`<option${a===mtm?' selected':''}>${a}</option>`).join('')}</select></label><div style="margin-top:12px">${body||'<p class="note">No moves match that filter.</p>'}</div>`}
+const SKN=['Hgt','Str','Spd','Jmp','End','Ins','Dnk','FT','FG','3P','OIQ','DIQ','Drb','Pss','Reb'],SK=['hgt','stre','spd','jmp','endu','ins','dnk','ft','fg','tp','oiq','diq','drb','pss','reb'];
+const hh=h=>h?Math.floor(h/12)+"'"+(h%12)+'"':'–';
+function mkp(p,ab){const rs=p.ratings||[],r=rs[rs.length-1]||{},d=p.draft||{};
+ return{n:((p.firstName||'')+' '+(p.lastName||'')).trim(),b:(p.born||{}).year,h:p.hgt,w:p.weight,cl:p.college||'',po:r.pos||'',t:p.tid,dr:d.year?[d.year,d.round,d.pick,ab[d.tid]||'']:null,rt:rs.map(x=>[x.season,x.ovr,x.pot]),sk:SK.map(k=>r[k]),ct:p.contract?[p.contract.amount,p.contract.exp]:null,aw:(p.awards||[]).map(x=>[x.season,x.type]),
+ st:(p.stats||[]).map(s=>[s.season,ab[s.tid]||'',s.playoffs?1:0,s.gp||0,s.min||0,s.pts||0,(s.orb||0)+(s.drb||0),s.ast||0,s.stl||0,s.blk||0,s.tp||0,s.tpa||0,s.fg||0,s.fga||0,s.ft||0,s.fta||0,s.per||0])}}
+const av=s=>{const g=s[3]||1,p=(m,x)=>x?(100*m/x).toFixed(1):'–';return `<td>${s[3]}</td>`+[4,5,6,7,8,9].map(i=>`<td>${f1(s[i]/g)}</td>`).join('')+`<td>${p(s[12],s[13])}</td><td>${p(s[10],s[11])}</td><td>${p(s[14],s[15])}</td><td>${f1(s[16])}</td>`};
+const kv=a=>`<div class="kp">${a.map(([l,v])=>`<div><div class="note">${l}</div><b>${v}</b></div>`).join('')}</div>`;
+function stT(rows){if(!rows.length)return'<p class="note">No games yet.</p>';const t=rows.reduce((a,s)=>a.map((v,i)=>i>=3&&i<16?v+s[i]:i===16?v+s[16]*s[3]:v),Array(17).fill(0));t[16]/=t[3]||1;
+ return `<div class="scroll"><table class="rt"><tr><th>Year</th><th>Team</th><th>GP</th><th>MIN</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>FG%</th><th>3P%</th><th>FT%</th><th>PER</th></tr>${rows.map(s=>`<tr><td>${s[0]}</td><td>${tb(s[1]||'–')}</td>${av(s)}</tr>`).join('')}<tr><td><b>Career</b></td><td></td>${av(t)}</tr></table></div>`}
+function spark(rt){if(rt.length<2)return'<p class="note">Needs two seasons of data.</p>';const W=320,H=100,v=rt.flatMap(r=>[r[1],r[2]]),lo=Math.min(...v)-2,hi=Math.max(...v)+2,xs=i=>10+i*(W-20)/(rt.length-1),ys=z=>H-8-((z-lo)/(hi-lo))*(H-16),ln=k=>rt.map((r,i)=>(i?'L':'M')+xs(i).toFixed(0)+' '+ys(r[k]).toFixed(0)).join('');
+ return `<svg viewBox="0 0 ${W} ${H}" width="100%"><path d="${ln(2)}" fill="none" stroke="var(--mute)" stroke-dasharray="4 3" stroke-width="2"/><path d="${ln(1)}" fill="none" stroke="var(--acc)" stroke-width="3"/></svg><div class="note">${rt[0][0]}–${rt[rt.length-1][0]} · peak OVR ${Math.max(...rt.map(r=>r[1]))}</div>`}
+function playerPage(id){const p=S.pl[id];if(!p)return'<button data-act="back">‹ Back</button>';
+ const L=S.lg,r=p.rt[p.rt.length-1]||[],ta=p.t>=0?abOf(p.t):p.t===-1?'Free agent':'Retired',mvs=S.mv.flatMap(m=>m.items.filter(x=>x.i===id).map(x=>[m,x])),
+ k=[['Age',L?L.season-p.b:'–'],['OVR',r[1]??'–'],['POT',r[2]??'–'],['Pos',e(p.po)],['Height',hh(p.h)],['Weight',p.w?p.w+' lb':'–'],['Contract',p.ct?'$'+(p.ct[0]/1000).toFixed(1)+'M · '+p.ct[1]:'–'],['Draft',p.dr?`${p.dr[0]} R${p.dr[1]} #${p.dr[2]}`:'Undrafted']];
+ return `<button data-act="back">‹ Back</button><div class="card hero" style="margin:12px 0"><div class="th"><h2 style="margin:0">${e(p.n)}</h2>${T[ta]?`<span class="lk" data-act="team:${ta}">${tm(ta)}</span>`:`<span class="pill">${ta}</span>`}</div>${p.cl?`<div class="note">${e(p.cl)}</div>`:''}<div style="margin-top:12px">${kv(k)}</div></div><div class="grid"><div class="card"><h3>Ratings by season</h3>${spark(p.rt)}<div class="note">Solid: OVR · Dashed: POT</div></div><div class="card"><h3>Skills</h3><div class="sk">${p.sk.map((v,i)=>v==null?'':`<div>${SKN[i]} <b>${v}</b><i><u style="width:${v}%"></u></i></div>`).join('')}</div></div></div><h3 style="margin-top:18px">Regular season</h3><div class="card">${stT(p.st.filter(s=>!s[2]))}</div>`+
+ (p.st.some(s=>s[2])?`<h3 style="margin-top:18px">Playoffs</h3><div class="card">${stT(p.st.filter(s=>s[2]))}</div>`:'')+(p.aw.length?`<h3 style="margin-top:18px">Awards</h3><div class="card">${p.aw.map(x=>`<span class="pill" style="margin:2px">${x[0]} ${e(x[1])}</span>`).join('')}</div>`:'')+
+ `<h3 style="margin-top:18px">Transactions tracked</h3><div class="card">${mvs.length?mvs.map(([m,x])=>`<div class="pr" data-act="mv:${m.id}.${m.items.indexOf(x)}"><span class="kd">${x.k}</span><span class="pn">${m.season} ${e(m.ph)}</span><span class="mv">${tb(x.f)} → ${tb(x.t)}</span></div>`).join(''):'<p class="note">None yet. Moves appear when an upload differs from the one before.</p>'}</div>`}
+function movePage(ref){const[mi,ix]=ref.split('.'),m=S.mv.find(z=>String(z.id)===mi),x=m&&m.items[+ix];if(!x)return'<button data-act="back">‹ Back</button>';
+ const P=S.pl[x.i],l=P&&P.st.filter(s=>!s[2]&&s[3]).slice(-1)[0],rel=x.e?m.items.filter(y=>y!==x&&y.e===x.e):[];
+ return `<button data-act="back">‹ Back</button><div class="card hero" style="margin:12px 0"><span class="pill">${x.k}</span><h2 style="margin:8px 0 4px"><span class="lk" data-act="pl:${x.i}">${e(x.n)}</span> <small class="note">OVR ${x.o??'–'}</small></h2><div class="mv" style="font-size:18px">${tb(x.f)} → ${tb(x.t)}</div><div class="note" style="margin-top:6px">${m.season} · ${e(m.ph)} · logged ${e(m.date)}</div></div>`+
+ (x.tx?`<div class="card" style="margin-bottom:12px"><h3>What happened</h3><p>${e(x.tx)}</p></div>`:'')+
+ (l?`<div class="card" style="margin-bottom:12px"><h3>Latest season line (${l[0]})</h3>${kv([['GP',l[3]],['MIN',f1(l[4]/l[3])],['PTS',f1(l[5]/l[3])],['REB',f1(l[6]/l[3])],['AST',f1(l[7]/l[3])]])}<button data-act="pl:${x.i}" style="margin-top:10px">Full player history</button></div>`:'')+
+ (rel.length?`<div class="card"><h3>Also in this transaction</h3>${rel.map(y=>`<div class="pr" data-act="mv:${m.id}.${m.items.indexOf(y)}"><span class="kd">${y.k}</span><span class="pn">${e(y.n)}</span><span class="mv">${tb(y.f)} → ${tb(y.t)}</span></div>`).join('')}</div>`:'')}
+function seasonsHTML(){const ks=Object.keys(S.cp).sort().reverse();if(!ks.length)return needLg('season checkpoints (start, trade deadline, end of playoffs)');
+ return ks.map(y=>{const c=S.cp[y];return `<div class="card" style="margin-bottom:12px"><h3>${y} season${c.ch?` · Champion ${tm(c.ch)}`:''}</h3><div class="grid">`+[['s','Season start'],['d','Trade deadline'],['e','End of playoffs']].map(([k,l])=>{const x=c[k];return `<div><div class="note" style="margin-bottom:4px">${l}${x?' · '+e(x.date):''}</div>`+(x?x.teams.slice().sort((a,b)=>b[1]/(b[1]+b[2]||1)-a[1]/(a[1]+a[2]||1)).slice(0,5).map((t,i)=>`<div class="pr" data-act="team:${t[0]}"><span class="rk">${i+1}</span><span class="pn">${tb(t[0])}</span><b>${t[1]}–${t[2]}</b></div>`).join(''):'<p class="note">Not uploaded yet.</p>')+'</div>'}).join('')+'</div></div>'}).join('')}
 function ingest(j){
  const ga=j.gameAttributes||{},ss=ga.season,ab={};
  j.teams.forEach(t=>ab[t.tid]=T[t.abbrev]?t.abbrev:(Object.keys(T).find(k=>T[k][0]===t.name)||t.abbrev));
  const teams=j.teams.filter(t=>!t.disabled).map(t=>{const s=(t.seasons||[]).filter(x=>x.season===ss).pop()||{},q=(t.stats||[]).filter(x=>x.season===ss&&!x.playoffs).pop()||{};return{t:t.tid,a:ab[t.tid],c:t.cid,w:s.won||0,l:s.lost||0,pf:q.gp?q.pts/q.gp:0,pa:q.gp?q.oppPts/q.gp:0}});
- const prev=S.lg,e0=prev?prev.eid||0:0,ev={},base={},names={},info={},pl=[];let eid=e0;
- (j.events||[]).forEach(x=>{if(x.eid>eid)eid=x.eid;if(x.eid>e0&&x.pids)x.pids.forEach(p=>ev[p]=x.type)});
- (j.players||[]).forEach(p=>{const n=((p.firstName||'')+' '+(p.lastName||'')).trim(),r=(p.ratings||[]).slice(-1)[0]||{};
+ const prev=S.lg,e0=prev?prev.eid||0:0,ev={},et={},PL=S.pl,base={},names={},info={},pl=[];let eid=e0;
+ (j.events||[]).forEach(x=>{if(x.eid>eid)eid=x.eid;if(x.eid>e0&&x.pids)x.pids.forEach(p=>{ev[p]=x.type;et[p]={tx:(x.text||'').replace(/<[^>]*>/g,''),id:x.eid}})});
+ (j.players||[]).forEach(p=>{if(p.tid!==-2||(p.stats||[]).length)PL[p.pid]=mkp(p,ab);const n=((p.firstName||'')+' '+(p.lastName||'')).trim(),r=(p.ratings||[]).slice(-1)[0]||{};
   base[p.pid]=p.tid;info[p.pid]={n,o:r.ovr};if(p.tid>=-1)names[p.pid]=n;if(p.tid<-1)return;
   const a={g:0,mn:0,pts:0,r:0,as:0,st:0,bl:0,tp:0,tpa:0,fg:0,fga:0,ft:0,fta:0,per:0};let best=-1;
   (p.stats||[]).filter(s=>s.season===ss&&!s.playoffs).forEach(s=>{a.g+=s.gp||0;a.mn+=s.min||0;a.pts+=s.pts||0;a.r+=(s.orb||0)+(s.drb||0);a.as+=s.ast||0;a.st+=s.stl||0;a.bl+=s.blk||0;a.tp+=s.tp||0;a.tpa+=s.tpa||0;a.fg+=s.fg||0;a.fga+=s.fga||0;a.ft+=s.ft||0;a.fta+=s.fta||0;if((s.min||0)>best){best=s.min||0;a.per=s.per||0}});
@@ -189,10 +228,12 @@ function ingest(j){
  const drop=new Set(pl.filter(p=>p.t<0).sort((x,y)=>y.o-x.o).slice(30).map(p=>p.i)),items=[],lab=(t,m)=>t>=0?(m[t]||'?'):t===-1?'FA':t===-2?'Draft':'Retired';
  if(prev)Object.keys(base).forEach(id=>{const b=prev.base[id],n=base[id];if(b===n)return;let k=null;
   if(n===-3){if(b>=-1)k='Retired'}else if(n>=0)k=b===undefined||b===-1?'Signed':b===-2?'Draft':ev[id]==='freeAgent'?'Signed':'Trade';else if(n===-1&&b>=0)k='Released';
-  if(k)items.push({n:info[id].n||(prev.names||{})[id],o:info[id].o,f:b===undefined?'New':lab(b,prev.ab||{}),t:lab(n,ab),k})});
+  if(k)items.push({n:info[id].n||(prev.names||{})[id],o:info[id].o,f:b===undefined?'New':lab(b,prev.ab||{}),t:lab(n,ab),k,i:+id,tx:(et[id]||{}).tx||'',e:(et[id]||{}).id||0})});
  items.sort((x,y)=>(y.o||0)-(x.o||0));
  const ph=PH[ga.phase]||('Phase '+ga.phase),date=new Date().toLocaleDateString();
  S.lg={season:ss,ph,date,teams,pl:pl.filter(p=>!drop.has(p.i)),base,names,ab,eid};
+ const gp=Math.max(0,...teams.map(t=>t.w+t.l)),kd=ga.phase>=3?'e':(ga.phase===0||gp<=2)?'s':'d',ns=ga.numGamesPlayoffSeries,nr=Array.isArray(ns)?(ns[0]&&ns[0].value?ns[ns.length-1].value.length:ns.length):4,cw=j.teams.find(t=>nr&&(t.seasons||[]).some(z=>z.season===ss&&z.playoffRoundsWon===nr));
+ (S.cp[ss]=S.cp[ss]||{})[kd]={date,ph,teams:teams.map(t=>[t.a,t.w,t.l,Math.round(t.pf*10)/10,Math.round(t.pa*10)/10])};if(cw)S.cp[ss].ch=ab[cw.tid];
  if(items.length)S.mv.unshift({id:Date.now(),season:ss,ph,date,items});
  const tally={};items.forEach(x=>tally[x.k]=(tally[x.k]||0)+1);
  return `League data updated: ${ss} ${ph}. `+(prev?(items.length?`${items.length} player moves since your last upload (${Object.entries(tally).map(([k,v])=>v+' '+k.toLowerCase()).join(', ')}).`:'No player moves since your last upload.'):'First upload saved. Moves are tracked from the next upload onward.')}
@@ -221,14 +262,16 @@ async function importBBGM(f){
   imsg=ingest(j)+' '+(S.groups?cupFill(j):'Draw Cup groups to auto-fill group scores from your uploads.');if(!S.groups&&(tab==='groups'||tab==='bracket'))tab='teams'
  }catch(x){imsg='That file could not be read as a BBGM export (.json or .json.gz).'}
  finally{save();render()}}
-document.addEventListener('click',ev=>{const b=ev.target.closest('[data-act]');if(!b)return;if(b.dataset.act==='import'){$('#bbf').click();return}act(b.dataset.act)});
+document.addEventListener('click',ev=>{const b=ev.target.closest('[data-act]');if(!b)return;const d=b.dataset.act;if(d==='import'){$('#bbf').click();return}if(d==='rst'){$('#rst').click();return}
+ if(d==='bdl'){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(S)],{type:'application/json'}));a.download='league-hub-backup.json';a.click();return}act(d)});
 document.addEventListener('change',ev=>{const t=ev.target;
  if(t.id==='season'){S.season=t.value||'Cup';save();return}
  if(t.id==='mteam'){mtm=t.value;render();return}
+ if(t.id==='rst'){const f=t.files[0];t.value='';if(f)f.text().then(x=>{try{const j=JSON.parse(x);if(!j||!Array.isArray(j.history))throw 0;S=Object.assign(fresh(),j);msg='Backup restored.'}catch(z){msg='That is not a valid backup file.'}save();render()});return}
  if(t.id==='bbf'){if(t.files[0])importBBGM(t.files[0]);t.value='';return}
  if(!t.matches('input.sc'))return;
  if(t.dataset.ko){const id=t.dataset.ko,m=bracket(S).m[id],v=[...document.querySelectorAll(`[data-ko="${id}"]`)].map(i=>i.value);S.ko[id]={h:m.h,a:m.a,hs:v[0],as:v[1]}}
  else{S.games[t.dataset.k]=[...document.querySelectorAll(`[data-k="${CSS.escape(t.dataset.k)}"]`)].map(i=>i.value)}
  save();render()});
-render();
+boot();
 </script></body></html>
