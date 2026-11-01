@@ -127,22 +127,27 @@ function act(a){
  if(a==='bshow'){$('#bk').value=JSON.stringify(S)}}
 async function importBBGM(f){
  try{
+  if(!S.groups){imsg='Draw the groups first, then import.';return}
   const j=JSON.parse(await f.text());
   if(!j||!Array.isArray(j.teams)||!Array.isArray(j.games)||!j.games.length){imsg='No game results found in that file. When exporting from BBGM, tick the game results option.';return}
-  const ab={};j.teams.forEach(t=>ab[t.tid]=t.abbrev);
-  const rg=j.games.filter(g=>!g.playoffs&&g.teams&&g.teams.length===2);
+  const ab={};j.teams.forEach(t=>{ab[t.tid]=T[t.abbrev]?t.abbrev:Object.keys(T).find(k=>T[k][0]===t.name)||t.abbrev});
+  const num2=v=>typeof v==='number'&&isFinite(v)&&v>=0;
+  /* Only real regular-season games count. Playoffs and anything flagged as exhibition are ignored,
+     so exhibition knockout games can never leak into the group stage. */
+  const rg=j.games.filter(g=>!g.playoffs&&!g.exhibition&&Array.isArray(g.teams)&&g.teams.length===2&&g.teams.every(t=>num2(t.pts)));
   if(!rg.length){imsg='That export has no regular-season games yet.';return}
   const ss=rg.reduce((m,g)=>Math.max(m,g.season||0),0);
-  const gm=rg.filter(g=>(g.season||0)===ss).sort((a,b)=>a.gid-b.gid);
+  const gm=rg.filter(g=>(g.season||0)===ss).sort((a,b)=>(a.day??a.gid)-(b.day??b.gid)||a.gid-b.gid);
   const gi={},K={};S.groups.forEach((g,i)=>{g.forEach(t=>gi[t]=i);pairs(g).forEach(([h,a])=>K[h+'>'+a]=1)});
-  const seen={},miss=new Set();let n=0;
+  const seen={},miss=new Set();let filled=0,kept=0,met=0;
   gm.forEach(g=>{const[x,y]=g.teams,a=ab[x.tid],b=ab[y.tid];
    if(!T[a]||!T[b]){[a,b].forEach(t=>{if(!T[t])miss.add(t)});return}
    if(gi[a]!==gi[b])return;
-   const p=[a,b].sort().join('|');if(seen[p])return;seen[p]=1;
-   if(K[a+'>'+b])S.games[a+'>'+b]=[x.pts,y.pts];else S.games[b+'>'+a]=[y.pts,x.pts];
-   n++});
-  imsg=`Imported ${n} of 60 group games (first meeting of each pair, ${ss} season).`+(n<60?` ${60-n} pairs haven't met yet. Export again later and re-import.`:'')+(miss.size?` Unrecognised team abbreviations: ${[...miss].join(', ')}.`:'')
+   const p=[a,b].sort().join('|');if(seen[p])return;seen[p]=1;met++;
+   const fwd=!!K[a+'>'+b],k=fwd?a+'>'+b:b+'>'+a,sc=fwd?[x.pts,y.pts]:[y.pts,x.pts],cur=S.games[k];
+   if(cur&&cur[0]!==''&&cur[1]!==''&&cur[0]!=null&&cur[1]!=null){kept++;return}
+   S.games[k]=sc;filled++});
+  imsg=`Imported ${filled} new group game${filled===1?'':'s'} from the ${ss} regular season (first meeting of each pair only).`+(kept?` ${kept} already had scores and were left alone.`:'')+(met<60?` ${60-met} pairs haven't met yet, so export again later and re-import.`:'')+' Playoff and exhibition games are ignored, and knockout scores are never touched.'+(miss.size?` Unrecognised team abbreviations: ${[...miss].join(', ')}.`:'')
  }catch(x){imsg='That file could not be read as a BBGM export.'}
  finally{save();render()}}
 document.addEventListener('click',ev=>{const b=ev.target.closest('[data-act]');if(!b)return;if(b.dataset.act==='import'){$('#bbf').click();return}act(b.dataset.act)});
