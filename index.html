@@ -64,7 +64,7 @@ const GN=['East A','East B','East C','West A','West B','West C'];
 const ID={ATL:1610612737,BOS:1610612738,BKN:1610612751,CHA:1610612766,CHI:1610612741,CLE:1610612739,DET:1610612765,IND:1610612754,MIA:1610612748,MIL:1610612749,NYK:1610612752,ORL:1610612753,PHI:1610612755,TOR:1610612761,WAS:1610612764,DAL:1610612742,DEN:1610612743,GSW:1610612744,HOU:1610612745,LAC:1610612746,LAL:1610612747,MEM:1610612763,MIN:1610612750,NOP:1610612740,OKC:1610612760,PHX:1610612756,POR:1610612757,SAC:1610612758,SAS:1610612759,UTA:1610612762};
 const fresh=()=>({season:'2026-27',groups:null,games:{},ko:{},history:[]});
 let ok=true,S=Object.assign(fresh(),(()=>{try{return JSON.parse(localStorage.getItem(KEY))||{}}catch(x){return{}}})());
-let tab='groups',armed=null,tmr,msg='';
+let tab='groups',armed=null,tmr,msg='',imsg='';
 const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S));ok=true}catch(x){ok=false}};
 const e=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const nextSeason=s=>{let m=/^(\d{4})-(\d{2})$/.exec(s);if(m){const y=+m[1]+1;return y+'-'+String((y+1)%100).padStart(2,'0')}m=/^\d{4}$/.exec(s);return m?String(+s+1):s+' (next)'};
@@ -101,7 +101,7 @@ function render(){
  if(tab==='groups'){
   if(!S.groups)h+=`<div class="card empty"><h3>No groups yet for ${e(S.season)}</h3><p class="note">Draw three random groups of five in each conference, like the real Cup.</p>${btn('draw','Draw groups','p')}</div>`;
   else{const n=[0,1,2,3,4,5].reduce((t,i)=>t+stand(S,i).n,0);
-   h+=`<div class="bar" style="margin-bottom:12px">${btn('draw','Redraw groups')}<span class="note">${n} of 60 group games entered. Ties break on point difference, then points scored. Scores save as you type.</span></div>`+groupsHTML(S,false)}}
+   h+=`<div class="bar" style="margin-bottom:12px">${btn('draw','Redraw groups')}<button data-act="import" class="p">Import BBGM games</button><input type="file" id="bbf" accept=".json,application/json" hidden><span class="note">${n} of 60 group games entered. Ties break on point difference, then points scored. Scores save as you type.</span></div>`+(imsg?`<p class="note">${e(imsg)}</p>`:'')+groupsHTML(S,false)}}
  if(tab==='bracket'){
   if(!S.groups)h+=`<div class="card empty"><h3>Draw the groups first</h3><p class="note">The bracket fills in after the group games are scored.</p>${btn('tab:groups','Go to groups','p')}</div>`;
   else{const F=bracket(S).m.F;
@@ -125,9 +125,30 @@ function act(a){
  else if(a==='bload'){try{const j=JSON.parse($('#bk').value);if(!j||!Array.isArray(j.history))throw 0;S=Object.assign(fresh(),j);msg='Backup loaded.'}catch(x){msg='That text is not a valid backup.'}}
  save();render();
  if(a==='bshow'){$('#bk').value=JSON.stringify(S)}}
-document.addEventListener('click',ev=>{const b=ev.target.closest('[data-act]');if(b)act(b.dataset.act)});
+async function importBBGM(f){
+ try{
+  const j=JSON.parse(await f.text());
+  if(!j||!Array.isArray(j.teams)||!Array.isArray(j.games)||!j.games.length){imsg='No game results found in that file. When exporting from BBGM, tick the game results option.';return}
+  const ab={};j.teams.forEach(t=>ab[t.tid]=t.abbrev);
+  const rg=j.games.filter(g=>!g.playoffs&&g.teams&&g.teams.length===2);
+  if(!rg.length){imsg='That export has no regular-season games yet.';return}
+  const ss=rg.reduce((m,g)=>Math.max(m,g.season||0),0);
+  const gm=rg.filter(g=>(g.season||0)===ss).sort((a,b)=>a.gid-b.gid);
+  const gi={},K={};S.groups.forEach((g,i)=>{g.forEach(t=>gi[t]=i);pairs(g).forEach(([h,a])=>K[h+'>'+a]=1)});
+  const seen={},miss=new Set();let n=0;
+  gm.forEach(g=>{const[x,y]=g.teams,a=ab[x.tid],b=ab[y.tid];
+   if(!T[a]||!T[b]){[a,b].forEach(t=>{if(!T[t])miss.add(t)});return}
+   if(gi[a]!==gi[b])return;
+   const p=[a,b].sort().join('|');if(seen[p])return;seen[p]=1;
+   if(K[a+'>'+b])S.games[a+'>'+b]=[x.pts,y.pts];else S.games[b+'>'+a]=[y.pts,x.pts];
+   n++});
+  imsg=`Imported ${n} of 60 group games (first meeting of each pair, ${ss} season).`+(n<60?` ${60-n} pairs haven't met yet. Export again later and re-import.`:'')+(miss.size?` Unrecognised team abbreviations: ${[...miss].join(', ')}.`:'')
+ }catch(x){imsg='That file could not be read as a BBGM export.'}
+ finally{save();render()}}
+document.addEventListener('click',ev=>{const b=ev.target.closest('[data-act]');if(!b)return;if(b.dataset.act==='import'){$('#bbf').click();return}act(b.dataset.act)});
 document.addEventListener('change',ev=>{const t=ev.target;
  if(t.id==='season'){S.season=t.value||'Cup';save();return}
+ if(t.id==='bbf'){if(t.files[0])importBBGM(t.files[0]);t.value='';return}
  if(!t.matches('input.sc'))return;
  if(t.dataset.ko){const id=t.dataset.ko,m=bracket(S).m[id],v=[...document.querySelectorAll(`[data-ko="${id}"]`)].map(i=>i.value);S.ko[id]={h:m.h,a:m.a,hs:v[0],as:v[1]}}
  else{S.games[t.dataset.k]=[...document.querySelectorAll(`[data-k="${CSS.escape(t.dataset.k)}"]`)].map(i=>i.value)}
