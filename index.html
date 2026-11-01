@@ -54,17 +54,30 @@ tr.q td:first-child{box-shadow:inset 3px 0 var(--win);padding-left:6px}
 details{margin:8px 0}
 summary{cursor:pointer;font-weight:600}
 textarea{width:100%;min-height:90px;box-sizing:border-box}
+.tabs{overflow-x:auto}.tabs button{white-space:nowrap}
+select{font:inherit;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px 8px}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 12px}
+.tc{cursor:pointer}.th{display:flex;justify-content:space-between;align-items:center}
+.rec{font:700 26px "Barlow Condensed",sans-serif}
+.pr{display:flex;align-items:center;gap:8px;padding:5px 0;border-top:1px solid var(--line);font-size:14px}
+.pn{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pos{width:26px;font-size:12px;color:var(--mute)}.rk{width:18px;color:var(--mute);font-size:12px;text-align:right}
+.ln{font-variant-numeric:tabular-nums;color:var(--mute);font-size:13px;white-space:nowrap}
+.kd{width:64px;text-align:center;font-size:11px;padding:2px 0;border:1px solid var(--line);border-radius:99px;color:var(--mute)}
+.mv{display:flex;gap:4px;align-items:center;white-space:nowrap}
+.kp{display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));gap:10px}.kp b{font:700 26px "Barlow Condensed",sans-serif}
+.rt th,.rt td{padding:4px 8px;white-space:nowrap}
 </style></head>
-<body><div id="app"></div>
+<body><div id="app"></div><input type="file" id="bbf" accept=".json,.gz,application/json,application/gzip,application/x-gzip" hidden>
 <script>
 const KEY='nbaCupTracker.v1';
 const T={ATL:["Hawks","#C8102E"],BOS:["Celtics","#007A33"],BKN:["Nets","#6B7280"],CHA:["Hornets","#00788C"],CHI:["Bulls","#CE1141"],CLE:["Cavaliers","#860038"],DET:["Pistons","#1D42BA"],IND:["Pacers","#FDBB30"],MIA:["Heat","#98002E"],MIL:["Bucks","#00471B"],NYK:["Knicks","#F58426"],ORL:["Magic","#0077C0"],PHI:["76ers","#006BB6"],TOR:["Raptors","#CE1141"],WAS:["Wizards","#E31837"],DAL:["Mavericks","#00538C"],DEN:["Nuggets","#FEC524"],GSW:["Warriors","#FFC72C"],HOU:["Rockets","#CE1141"],LAC:["Clippers","#C8102E"],LAL:["Lakers","#552583"],MEM:["Grizzlies","#5D76A9"],MIN:["Timberwolves","#236192"],NOP:["Pelicans","#C8102E"],OKC:["Thunder","#007AC1"],PHX:["Suns","#E56020"],POR:["Trail Blazers","#E03A3E"],SAC:["Kings","#5A2D81"],SAS:["Spurs","#8A8D8F"],UTA:["Jazz","#F9A01B"]};
 const EA=['ATL','BOS','BKN','CHA','CHI','CLE','DET','IND','MIA','MIL','NYK','ORL','PHI','TOR','WAS'],WE=Object.keys(T).filter(t=>!EA.includes(t));
 const GN=['East A','East B','East C','West A','West B','West C'];
 const ID={ATL:1610612737,BOS:1610612738,BKN:1610612751,CHA:1610612766,CHI:1610612741,CLE:1610612739,DET:1610612765,IND:1610612754,MIA:1610612748,MIL:1610612749,NYK:1610612752,ORL:1610612753,PHI:1610612755,TOR:1610612761,WAS:1610612764,DAL:1610612742,DEN:1610612743,GSW:1610612744,HOU:1610612745,LAC:1610612746,LAL:1610612747,MEM:1610612763,MIN:1610612750,NOP:1610612740,OKC:1610612760,PHX:1610612756,POR:1610612757,SAC:1610612758,SAS:1610612759,UTA:1610612762};
-const fresh=()=>({season:'2026-27',groups:null,games:{},ko:{},history:[]});
+const fresh=()=>({season:'2026-27',groups:null,games:{},ko:{},history:[],lg:null,mv:[]});
 let ok=true,S=Object.assign(fresh(),(()=>{try{return JSON.parse(localStorage.getItem(KEY))||{}}catch(x){return{}}})());
-let tab='groups',armed=null,tmr,msg='',imsg='';
+let tab=S.lg?'teams':'groups',armed=null,tmr,msg='',imsg='';
 const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S));ok=true}catch(x){ok=false}};
 const e=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const nextSeason=s=>{let m=/^(\d{4})-(\d{2})$/.exec(s);if(m){const y=+m[1]+1;return y+'-'+String((y+1)%100).padStart(2,'0')}m=/^\d{4}$/.exec(s);return m?String(+s+1):s+' (next)'};
@@ -95,13 +108,15 @@ function bracketHTML(st,ro){const{m,s}=bracket(st);
  const conf=(c,n)=>`<h2>${n}</h2>${s[c]?'':`<p class="note">Seeds appear once all 30 ${n} group games have scores (${[0,1,2].reduce((t,i)=>t+stand(st,i+(c==='W'?3:0)).n,0)} entered).</p>`}<div class="scroll"><div class="br"><div class="col">${matchHTML(m[c+'Q1'],s[c],ro)}${matchHTML(m[c+'Q2'],s[c],ro)}</div>${matchHTML(m[c+'S'],s[c],ro)}</div></div>`;
  return conf('E','East')+conf('W','West')+`<h2>Final</h2>${matchHTML(m.F,null,ro,1)}`}
 function render(){
- let h=`<div class="wrap"><div class="top"><div><h1>NBA Cup</h1><div class="note">Draw the groups, log scores, run the bracket and keep every Cup.</div></div><div class="bar"><label class="note">Season <input id="season" value="${e(S.season)}" size="8"></label>${btn('reset','Reset Cup')}${btn('wipe','Delete everything','d')}</div></div>`;
+ let h=`<div class="wrap"><div class="top"><div><h1>League Hub</h1><div class="note">Upload your BBGM export to follow every team, player and move, and run the NBA Cup.</div></div><div class="bar"><button data-act="import" class="p">Upload league file</button><label class="note">Season <input id="season" value="${e(S.season)}" size="8"></label>${btn('reset','Reset Cup')}${btn('wipe','Delete everything','d')}</div></div>`;
  if(!ok)h+=`<p class="note" style="color:var(--bad)">This browser is blocking storage, so nothing will be kept after you close the page. Use the backup box in History.</p>`;
- h+=`<div class="tabs" role="tablist">${[['groups','Groups'],['bracket','Bracket'],['history','History ('+S.history.length+')']].map(([k,l])=>`<button role="tab" data-act="tab:${k}" aria-selected="${tab===k}">${l}</button>`).join('')}</div>`;
+ h+=`<div class="tabs" role="tablist">${[['teams','Teams'],['leaders','Leaders'],['moves','Moves ('+S.mv.reduce((t,m)=>t+m.items.length,0)+')'],['groups','Cup Groups'],['bracket','Bracket'],['history','History ('+S.history.length+')']].map(([k,l])=>`<button role="tab" data-act="tab:${k}" aria-selected="${tab===k}">${l}</button>`).join('')}</div>`;
+ if(imsg)h+=`<div class="card" style="margin-bottom:12px">${e(imsg)} ${S.mv.length?'<button data-act="tab:moves">View movements</button>':''}</div>`;
+ if(tab==='teams')h+=teamsHTML();if(tab==='leaders')h+=leadersHTML();if(tab==='moves')h+=movesHTML();
  if(tab==='groups'){
   if(!S.groups)h+=`<div class="card empty"><h3>No groups yet for ${e(S.season)}</h3><p class="note">Draw three random groups of five in each conference, like the real Cup.</p>${btn('draw','Draw groups','p')}</div>`;
   else{const n=[0,1,2,3,4,5].reduce((t,i)=>t+stand(S,i).n,0);
-   h+=`<div class="bar" style="margin-bottom:12px">${btn('draw','Redraw groups')}<button data-act="import" class="p">Import BBGM games</button><input type="file" id="bbf" accept=".json,.gz,application/json,application/gzip,application/x-gzip" hidden><span class="note">${n} of 60 group games entered. Ties break on point difference, then points scored. Scores save as you type.</span></div>`+(imsg?`<p class="note">${e(imsg)}</p>`:'')+groupsHTML(S,false)}}
+   h+=`<div class="bar" style="margin-bottom:12px">${btn('draw','Redraw groups')}<button data-act="import">Fill scores from league file</button><span class="note">${n} of 60 group games entered. Ties break on point difference, then points scored. Scores save as you type.</span></div>`+groupsHTML(S,false)}}
  if(tab==='bracket'){
   if(!S.groups)h+=`<div class="card empty"><h3>Draw the groups first</h3><p class="note">The bracket fills in after the group games are scored.</p>${btn('tab:groups','Go to groups','p')}</div>`;
   else{const F=bracket(S).m.F;
@@ -116,7 +131,12 @@ function act(a){
  const need=a==='reset'||a==='wipe'||a.startsWith('del:')||(a==='draw'&&S.groups&&Object.values(S.games).some(g=>g.some(v=>v!=='')));
  if(need&&armed!==a){armed=a;clearTimeout(tmr);tmr=setTimeout(()=>{armed=null;render()},3500);render();return}
  armed=null;msg='';
- if(a.startsWith('tab:'))tab=a.slice(4);
+ if(a.startsWith('tab:')){tab=a.slice(4);tsel=null;imsg=''}
+ else if(a.startsWith('team:')){tsel=a.slice(5);tab='teams';imsg=''}
+ else if(a==='back')tsel=null;
+ else if(a.startsWith('sort:'))tsort=a.slice(5);
+ else if(a.startsWith('conf:'))tconf=a.slice(5);
+ else if(a.startsWith('mf:'))mvk=a.slice(3);
  else if(a==='draw'){const[x,y]=[ch(sh(EA)),ch(sh(WE))];S.groups=[...x,...y];S.games={};S.ko={};tab='groups'}
  else if(a==='reset'){S.groups=null;S.games={};S.ko={}}
  else if(a==='wipe')S=fresh();
@@ -131,38 +151,18 @@ async function readExport(f){
   if(typeof DecompressionStream==='undefined')throw new Error('gz');
   return await new Response(new Blob([buf]).stream().pipeThrough(new DecompressionStream('gzip'))).text()}
  return new TextDecoder().decode(buf)}
-async function importBBGM(f){
- try{
-  if(!S.groups){imsg='Draw the groups first, then import.';return}
-  const j=JSON.parse(await readExport(f));
-  if(!j||!Array.isArray(j.teams)||!Array.isArray(j.games)||!j.games.length){imsg='No game results found in that file. When exporting from BBGM, tick the game results option.';return}
-  const ab={};j.teams.forEach(t=>{ab[t.tid]=T[t.abbrev]?t.abbrev:Object.keys(T).find(k=>T[k][0]===t.name)||t.abbrev});
-  const num2=v=>typeof v==='number'&&isFinite(v)&&v>=0;
-  /* Only real regular-season games count. Playoffs and anything flagged as exhibition are ignored,
-     so exhibition knockout games can never leak into the group stage. */
-  const rg=j.games.filter(g=>!g.playoffs&&!g.exhibition&&Array.isArray(g.teams)&&g.teams.length===2&&g.teams.every(t=>num2(t.pts)));
-  if(!rg.length){imsg='That export has no regular-season games yet.';return}
-  const ss=rg.reduce((m,g)=>Math.max(m,g.season||0),0);
-  const gm=rg.filter(g=>(g.season||0)===ss).sort((a,b)=>(a.day??a.gid)-(b.day??b.gid)||a.gid-b.gid);
-  const gi={},K={};S.groups.forEach((g,i)=>{g.forEach(t=>gi[t]=i);pairs(g).forEach(([h,a])=>K[h+'>'+a]=1)});
-  const seen={},miss=new Set();let filled=0,kept=0,met=0;
-  gm.forEach(g=>{const[x,y]=g.teams,a=ab[x.tid],b=ab[y.tid];
-   if(!T[a]||!T[b]){[a,b].forEach(t=>{if(!T[t])miss.add(t)});return}
-   if(gi[a]!==gi[b])return;
-   const p=[a,b].sort().join('|');if(seen[p])return;seen[p]=1;met++;
-   const fwd=!!K[a+'>'+b],k=fwd?a+'>'+b:b+'>'+a,sc=fwd?[x.pts,y.pts]:[y.pts,x.pts],cur=S.games[k];
-   if(cur&&cur[0]!==''&&cur[1]!==''&&cur[0]!=null&&cur[1]!=null){kept++;return}
-   S.games[k]=sc;filled++});
-  imsg=`Imported ${filled} new group game${filled===1?'':'s'} from the ${ss} regular season (first meeting of each pair only).`+(kept?` ${kept} already had scores and were left alone.`:'')+(met<60?` ${60-met} pair${60-met===1?' hasn\'t':'s haven\'t'} met yet, so export again later and re-import.`:'')+' Playoff and exhibition games are ignored, and knockout scores are never touched.'+(miss.size?` Unrecognised team abbreviations: ${[...miss].join(', ')}.`:'')
- }catch(x){imsg='That file could not be read as a BBGM export (.json or .json.gz).'}
- finally{save();render()}}
-document.addEventListener('click',ev=>{const b=ev.target.closest('[data-act]');if(!b)return;if(b.dataset.act==='import'){$('#bbf').click();return}act(b.dataset.act)});
-document.addEventListener('change',ev=>{const t=ev.target;
- if(t.id==='season'){S.season=t.value||'Cup';save();return}
- if(t.id==='bbf'){if(t.files[0])importBBGM(t.files[0]);t.value='';return}
- if(!t.matches('input.sc'))return;
- if(t.dataset.ko){const id=t.dataset.ko,m=bracket(S).m[id],v=[...document.querySelectorAll(`[data-ko="${id}"]`)].map(i=>i.value);S.ko[id]={h:m.h,a:m.a,hs:v[0],as:v[1]}}
- else{S.games[t.dataset.k]=[...document.querySelectorAll(`[data-k="${CSS.escape(t.dataset.k)}"]`)].map(i=>i.value)}
- save();render()});
-render();
-</script></body></html>
+const PH={'-2':'Expansion draft','-1':'Fantasy draft',0:'Preseason',1:'Regular season',2:'After trade deadline',3:'Playoffs',4:'Before draft',5:'Draft',6:'After draft',7:'Re-sign players',8:'Free agency'};
+let tsel=null,tsort='w',tconf='A',mvk='All',mtm='';
+const f1=v=>v.toFixed(1),pg=(p,k)=>p.g?p[k]/p.g:0,sg=v=>(v>0?'+':'')+v.toFixed(1),abOf=t=>(S.lg.ab||{})[t]||'FA';
+const tb=t=>T[t]?`<span class="tm" style="--c:${T[t][1]}"><img src="https://cdn.nba.com/logos/nba/${ID[t]}/primary/L/logo.svg" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='inline-block'"><i></i><b>${t}</b></span>`:`<small class="note">${e(t)}</small>`;
+function tovr(P){let m=-124.13;P.map(p=>p.o).sort((a,b)=>b-a).slice(0,10).forEach((v,i)=>m+=0.4417*Math.exp(-0.1905*i)*v);return Math.round(m*50/20+50)}
+const needLg=w=>`<div class="card empty"><h3>No league data yet</h3><p class="note">Upload your BBGM export (.json or .json.gz) to see ${w}. Upload a fresh export any time and everything updates.</p><button data-act="import" class="p">Upload league file</button></div>`;
+const prow=p=>`<div class="pr"><span class="pos">${e(p.po)}</span><span class="pn">${e(p.n)}${p.inj?' <small class="note">INJ</small>':''}</span><span class="note">${p.o}/${p.p}</span><span class="ln">${f1(pg(p,'pts'))} ${f1(pg(p,'r'))} ${f1(pg(p,'as'))}</span></div>`;
+const chip=(pre,cur,arr)=>`<div class="chips">${arr.map(([k,l])=>`<button data-act="${pre}:${k}" class="${cur===k?'p':''}">${l}</button>`).join('')}</div>`;
+function teamsHTML(){const L=S.lg;if(!L)return needLg('every team, its top 5 players and full roster');if(tsel)return teamPage(tsel);
+ const R=L.teams.map(t=>{const P=L.pl.filter(p=>p.t===t.t).sort((a,b)=>b.o-a.o);return{...t,P,v:tovr(P)}});
+ const f={w:(a,b)=>b.w/(b.w+b.l||1)-a.w/(a.w+a.l||1)||(b.pf-b.pa)-(a.pf-a.pa),o:(a,b)=>b.v-a.v,d:(a,b)=>(b.pf-b.pa)-(a.pf-a.pa)}[tsort];
+ return `<div class="note" style="margin-bottom:8px">${e(L.season)} · ${e(L.ph)} · uploaded ${e(L.date)}</div>`+chip('sort',tsort,[['w','Record'],['o','Team OVR'],['d','Point diff']])+chip('conf',tconf,[['A','All'],['0','East'],['1','West']])+'<div class="grid">'+R.filter(t=>tconf==='A'||String(t.c)===tconf).sort(f).map(t=>`<div class="card tc" data-act="team:${t.a}"><div class="th">${tm(t.a)}<span class="rec">${t.w}–${t.l}</span></div><div class="note" style="margin-bottom:6px">OVR ${t.v} · ${sg(t.pf-t.pa)} diff · ${f1(t.pf)} pts</div><div class="note">Top 5 · OVR/POT · PTS REB AST</div>${t.P.slice(0,5).map(prow).join('')}</div>`).join('')+'</div>'}
+function teamPage(a){const L=S.lg,t=L.teams.find(x=>x.a===a);if(!t)return'';const P=L.pl.filter(p=>p.t===t.t).sort((x,y)=>y.o-x.o),pay=P.reduce((s,p)=>s+(p.c?p.c[0]:0),0)/1000,pc=(m,x)=>x?(100*m/x).toFixed(1):'–';
+ const k=[['Record',t.w+'–'+t.l],['Team OVR',tovr(P)],['Points',f1(t.pf)],['Opp pts',f1(t.pa)],['Diff',sg(t.pf-t.pa)],['Payroll','$'+pay.toFixed(1)+'M']];
+ return `<button data-act="back">‹ All teams</button><div class="card" style="margin:12px 0"><h2 style="margin:0 0 10px">${tm(a)}</h2><div class="kp">${k.map(([l,v])=>`<div><div class="note">${l}</div><b>${v}</b><
